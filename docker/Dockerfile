@@ -58,7 +58,7 @@ RUN ldconfig
 RUN cd /workspace/nixl/ && \
     . /opt/venv/bin/activate && \
     uv build --wheel --out-dir /tmp/dist && \
-    uv pip install /tmp/dist/nixl-0.3.0-cp312-cp312-linux_x86_64.whl
+    uv pip install /tmp/dist/nixl-0.3.1-cp312-cp312-linux_x86_64.whl
 # install build and runtime dependencies
 COPY ./requirements/common.txt common.txt
 COPY ./requirements/cuda.txt cuda.txt
@@ -81,11 +81,12 @@ ENV VLLM_FA_CMAKE_GPU_ARCHES=${vllm_fa_cmake_gpu_arches}
 # install build dependencies
 COPY ./requirements/build.txt build.txt
 # max jobs used by Ninja to build extensions
-ARG max_jobs=2
+ARG max_jobs=16
 ENV MAX_JOBS=${max_jobs}
 # number of threads used by nvcc
-ARG nvcc_threads=8
+ARG nvcc_threads=16
 ENV NVCC_THREADS=$nvcc_threads
+ENV SETUPTOOLS_SCM_PRETEND_VERSION_FOR_LMCACHE=v0.3.0
 RUN --mount=type=cache,target=/root/.cache/pip \
     . /opt/venv/bin/activate && \
     uv pip install -r build.txt
@@ -96,9 +97,12 @@ RUN --mount=type=cache,target=/root/.cache/ccache \
     --mount=type=cache,target=/root/.cache/pip \
     . /opt/venv/bin/activate && \
     python3 setup.py bdist_wheel --dist-dir=dist_lmcache
+
 RUN . /opt/venv/bin/activate && \
-uv pip install vllm --extra-index-url https://wheels.vllm.ai/nightly && \
-    uv pip install /workspace/LMCache/dist_lmcache/*.whl --verbose
+    uv pip install vllm --extra-index-url https://wheels.vllm.ai/nightly && \
+    uv pip install /workspace/LMCache/dist_lmcache/*.whl --verbose && \
+    uv pip install --verbose --no-deps http://10.1.2.131:5000/torch-2.7.1%2Bcu128-cp312-cp312-manylinux_2_28_x86_64.whl
+
 WORKDIR /workspace
 # COPY vllm_examples /workspace/examples
 # Create an entrypoint script to activate the virtual environment
